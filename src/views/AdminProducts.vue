@@ -565,8 +565,8 @@ export default {
         console.log('Products loaded:', products.value)
         console.log('Number of products:', products.value.length)
         
-        // Extract brands after products are loaded
-        extractBrands()
+        // Load all brands from API instead of extracting from products
+        await loadBrands()
       } catch (error) {
         console.error('Error fetching products:', error)
         // Show error message to user
@@ -616,9 +616,28 @@ export default {
       }
     }
 
+    const loadBrands = async () => {
+      try {
+        const response = await productApi.getBrands()
+        
+        if (response.data.success) {
+          brands.value = response.data.data || []
+        } else if (Array.isArray(response.data)) {
+          brands.value = response.data
+        } else {
+          brands.value = response.data.data || response.data || []
+        }
+        
+        companies.value = brands.value // Use the same data for companies dropdown
+      } catch (err) {
+        brands.value = []
+        companies.value = []
+      }
+    }
+
     const extractBrands = () => {
       try {
-        // Extract unique brands from products
+        // Extract unique brands from products as fallback
         const uniqueBrands = []
         const brandMap = new Map()
         
@@ -635,9 +654,7 @@ export default {
         
         brands.value = uniqueBrands.sort((a, b) => a.name.localeCompare(b.name))
         companies.value = brands.value // Use the same data for companies dropdown
-        console.log('Extracted brands:', brands.value)
       } catch (err) {
-        console.error('Error extracting brands:', err)
         brands.value = []
         companies.value = []
       }
@@ -953,7 +970,7 @@ export default {
 
     onMounted(async () => {
       loading.value = true
-      await Promise.all([fetchProducts(), fetchCategories(), fetchUserTypes()])
+      await Promise.all([fetchProducts(), fetchCategories(), fetchUserTypes(), loadBrands()])
       loading.value = false
       
       // Check if we should open the create modal based on route

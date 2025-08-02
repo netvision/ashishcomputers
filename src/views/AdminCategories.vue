@@ -1,6 +1,6 @@
 <template>
   <AdminLayout>
-    <div>
+    <div class="admin-categories">
       <!-- Header -->
       <div class="flex justify-between items-center mb-6">
         <div>
@@ -49,7 +49,7 @@
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div>
                     <div class="text-sm font-medium text-gray-900">{{ category.name }}</div>
-                    <div class="text-sm text-gray-500">{{ category.description }}</div>
+                    <div class="text-sm text-gray-500">{{ category.description || 'No description' }}</div>
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -111,7 +111,7 @@
                 <textarea 
                   v-model="categoryForm.description" 
                   rows="3" 
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-vertical"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="Category description"
                 ></textarea>
               </div>
@@ -146,6 +146,7 @@ import AdminLayout from '@/components/AdminLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter, useRoute } from 'vue-router'
 import { productApi, categoryApi } from '@/services/api'
+import { useNotification } from '@/composables/useNotification'
 
 export default {
   name: 'AdminCategories',
@@ -156,6 +157,7 @@ export default {
     const authStore = useAuthStore()
     const router = useRouter()
     const route = useRoute()
+    const { success, error } = useNotification()
     
     const categories = ref([])
     const products = ref([])
@@ -173,11 +175,8 @@ export default {
 
     const fetchCategories = async () => {
       try {
-        console.log('Fetching categories...')
         const response = await categoryApi.getCategories()
-        console.log('Categories response:', response)
         
-        // Handle different response structures
         if (response.data.success) {
           categories.value = response.data.data || []
         } else if (Array.isArray(response.data)) {
@@ -185,14 +184,8 @@ export default {
         } else {
           categories.value = response.data.data || response.data || []
         }
-        
-        console.log('Categories loaded:', categories.value)
-        console.log('Number of categories:', categories.value.length)
-      } catch (error) {
-        console.error('Error fetching categories:', error)
-        // Show error message to user
-        alert('Failed to load categories. Using demo data.')
-        // Add mock data for testing
+      } catch (err) {
+        error('Error loading categories', 'Please try again later')
         categories.value = [
           { id: 1, name: 'Laptops', slug: 'laptops', description: 'Portable computers', status: 1 },
           { id: 2, name: 'Desktops', slug: 'desktops', description: 'Desktop computers', status: 1 },
@@ -204,7 +197,6 @@ export default {
     const fetchProducts = async () => {
       try {
         const response = await productApi.getProducts()
-        // Ensure products is always an array
         if (response.data.success) {
           products.value = response.data.data.products || response.data.data || []
         } else if (Array.isArray(response.data)) {
@@ -212,9 +204,8 @@ export default {
         } else {
           products.value = []
         }
-      } catch (error) {
-        console.error('Error fetching products:', error)
-        products.value = [] // Ensure it's always an array
+      } catch (err) {
+        products.value = []
       }
     }
 
@@ -241,27 +232,22 @@ export default {
       try {
         saving.value = true
         
-        // Auto-generate slug if not provided
         if (!categoryForm.slug && categoryForm.name) {
           categoryForm.slug = generateSlug(categoryForm.name)
         }
 
         if (editingCategory.value) {
-          // Update existing category
-          const response = await categoryApi.updateCategory(editingCategory.value.id, categoryForm)
-          console.log('Category updated:', response)
+          await categoryApi.updateCategory(editingCategory.value.id, categoryForm)
+          success('Category updated successfully')
         } else {
-          // Create new category
-          const response = await categoryApi.createCategory(categoryForm)
-          console.log('Category created:', response)
+          await categoryApi.createCategory(categoryForm)
+          success('Category created successfully')
         }
         
         await fetchCategories()
         closeModal()
-        alert('Category saved successfully!')
-      } catch (error) {
-        console.error('Error saving category:', error)
-        alert(`Error saving category: ${error.response?.data?.message || error.message}`)
+      } catch (err) {
+        error('Error saving category', err.response?.data?.message || err.message)
       } finally {
         saving.value = false
       }
@@ -282,10 +268,10 @@ export default {
       
       try {
         await categoryApi.deleteCategory(category.id)
+        success('Category deleted successfully')
         await fetchCategories()
-      } catch (error) {
-        console.error('Error deleting category:', error)
-        alert('Error deleting category. Please try again.')
+      } catch (err) {
+        error('Error deleting category', 'Please try again')
       }
     }
 
@@ -303,7 +289,6 @@ export default {
       await Promise.all([fetchCategories(), fetchProducts()])
       loading.value = false
       
-      // Check if we should open the create modal based on route
       if (route.name === 'AdminCategoryCreate') {
         showCreateModal.value = true
       }
@@ -326,10 +311,3 @@ export default {
   }
 }
 </script>
-
-<style>
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-</style>

@@ -112,6 +112,23 @@ export const productApi = {
         'Content-Type': 'multipart/form-data',
       },
     })
+  },
+
+  // Brand management
+  getBrands() {
+    return api.get('/products/brands')
+  },
+  
+  createBrand(brandData) {
+    return api.post('/products/create-brand', brandData)
+  },
+  
+  updateBrand(id, brandData) {
+    return api.put(`/products/update-brand/${id}`, brandData)
+  },
+  
+  deleteBrand(id) {
+    return api.delete(`/products/delete-brand/${id}`)
   }
 }
 
@@ -145,27 +162,27 @@ export const userApi = {
   
   // Enhanced user registration
   register(userData) {
-    return api.post('/auth/register', userData)
-  },
-  
-  // Get user types
-  getUserTypes() {
-    return api.get('/auth/user-types')
+    return api.post('/user/register', userData)
   },
   
   // Get user profile
   getProfile() {
-    return api.get('/users/profile')
+    return api.get('/user/profile')
   },
   
   // Update user profile
   updateProfile(userData) {
-    return api.put('/users/update-profile', userData)
+    return api.put('/user/update-profile', userData)
   },
   
-  // Get user types for registration
+  // Change password
+  changePassword(passwordData) {
+    return api.post('/user/changepassword', passwordData)
+  },
+  
+  // Get user types for registration and profile
   getUserTypes() {
-    return api.get('/users/user-types')
+    return api.get('/user/types')
   }
 }
 
@@ -173,42 +190,57 @@ export const userApi = {
 export const adminUserApi = {
   // Get all users with filtering and pagination
   getUsers(params = {}) {
-    return api.get('/users', { params })
+    return api.get('/user', { params })
   },
   
   // Get user by ID
   getUser(id) {
-    return api.get(`/users/${id}`)
+    return api.get(`/user/view/${id}`)
   },
   
   // Create new user
   createUser(userData) {
-    return api.post('/users/create', userData)
+    return api.post('/user/create', userData)
   },
   
   // Update user
   updateUser(id, userData) {
-    return api.put(`/users/update/${id}`, userData)
+    return api.put(`/user/update/${id}`, userData)
   },
   
   // Delete user
   deleteUser(id) {
-    return api.delete(`/users/delete/${id}`)
+    return api.delete(`/user/delete/${id}`)
   },
   
   // Toggle user status (enable/disable)
-  toggleUserStatus(id) {
-    return api.post(`/users/toggle-status/${id}`)
+  toggleUserStatus(userId) {
+    return api.post('/user/togglestatus', { user_id: userId })
   },
   
-  // Update user type assignment
-  updateUserType(id, userTypeId) {
-    return api.post(`/users/update-user-type/${id}`, { user_type_id: userTypeId })
+  // Make user admin
+  makeAdmin(userId) {
+    return api.post('/user/makeadmin', { user_id: userId })
   },
   
   // Get all user types
   getUserTypes() {
-    return api.get('/users/user-types')
+    return api.get('/user/types')
+  },
+  
+  // Admin change user password
+  adminChangePassword(userId, newPassword) {
+    return api.post('/user/adminchangepassword', { 
+      user_id: userId, 
+      new_password: newPassword 
+    })
+  },
+  
+  // Update user type assignment (Admin function)
+  updateUserType(userId, userTypeId) {
+    return api.put(`/user/update/${userId}`, { 
+      user_type_id: userTypeId 
+    })
   }
 }
 

@@ -62,17 +62,6 @@
             {{ loading ? 'Signing in...' : 'Sign in' }}
           </button>
         </div>
-
-        <!-- Test Admin Login -->
-        <div class="mt-4">
-          <button
-            type="button"
-            @click="testAdminLogin"
-            class="w-full btn-secondary flex justify-center items-center"
-          >
-            Test Admin Login (Dev Mode)
-          </button>
-        </div>
       </form>
     </div>
   </div>
@@ -139,40 +128,6 @@ const handleLogin = async () => {
     }
   } catch (error) {
     errorMessage.value = 'An error occurred during login'
-  } finally {
-    loading.value = false
-  }
-}
-
-const testAdminLogin = async () => {
-  // Use real admin credentials for testing
-  loading.value = true
-  errorMessage.value = ''
-
-  try {
-    console.log('Attempting admin login...')
-    const result = await authStore.login({
-      username: 'admin',
-      password: 'admin123'
-    })
-
-    console.log('Login result:', result)
-    console.log('Auth store after login:', {
-      isAuthenticated: authStore.isAuthenticated,
-      token: authStore.token,
-      user: authStore.user
-    })
-
-    if (result.success) {
-      // Verify token is set in API headers
-      console.log('API headers after login:', authStore.token ? `Bearer ${authStore.token}` : 'No token')
-      router.push('/admin')
-    } else {
-      errorMessage.value = result.message || 'Admin login failed'
-    }
-  } catch (error) {
-    console.error('Error during admin login:', error)
-    errorMessage.value = 'Error during admin login'
   } finally {
     loading.value = false
   }

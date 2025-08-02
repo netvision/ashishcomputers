@@ -159,6 +159,12 @@
                       Edit
                     </button>
                     <button 
+                      @click="changeUserPassword(user)" 
+                      class="text-purple-600 hover:text-purple-900"
+                    >
+                      Password
+                    </button>
+                    <button 
                       @click="toggleUserStatus(user)" 
                       :class="user.status === 10 ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'"
                       :disabled="user.is_admin && user.id === currentUser?.id"
@@ -308,6 +314,63 @@
         </div>
       </div>
 
+      <!-- Password Change Modal -->
+      <div v-if="showPasswordModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">
+              Change Password for {{ selectedUserForPassword?.full_name || selectedUserForPassword?.username }}
+            </h3>
+            
+            <form @submit.prevent="adminChangePassword" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">New Password</label>
+                <input 
+                  v-model="passwordChangeForm.newPassword" 
+                  type="password" 
+                  required
+                  minlength="8"
+                  class="form-input"
+                  placeholder="Enter new password (min 8 characters)"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                <input 
+                  v-model="passwordChangeForm.confirmPassword" 
+                  type="password" 
+                  required
+                  class="form-input"
+                  placeholder="Confirm new password"
+                />
+                <div v-if="passwordChangeForm.confirmPassword && passwordChangeForm.newPassword !== passwordChangeForm.confirmPassword" 
+                     class="text-red-600 text-sm mt-1">
+                  Passwords do not match
+                </div>
+              </div>
+
+              <div class="flex justify-end space-x-2 pt-4">
+                <button 
+                  type="button" 
+                  @click="closePasswordModal" 
+                  class="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  class="btn-primary"
+                  :disabled="saving || passwordChangeForm.newPassword !== passwordChangeForm.confirmPassword || passwordChangeForm.newPassword.length < 8"
+                >
+                  {{ saving ? 'Changing...' : 'Change Password' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
       <!-- User Type Change Modal -->
       <div v-if="showUserTypeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
         <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -360,7 +423,9 @@ const saving = ref(false)
 const showCreateUserModal = ref(false)
 const showEditUserModal = ref(false)
 const showUserTypeModal = ref(false)
+const showPasswordModal = ref(false)
 const selectedUserForTypeChange = ref(null)
+const selectedUserForPassword = ref(null)
 const newUserTypeId = ref(null)
 
 const filters = reactive({
@@ -388,6 +453,11 @@ const userForm = reactive({
   role: 'user',
   status: 10,
   password: ''
+})
+
+const passwordChangeForm = reactive({
+  newPassword: '',
+  confirmPassword: ''
 })
 
 const fetchUsers = async () => {
@@ -494,6 +564,53 @@ const saveUser = async () => {
   }
 }
 
+const changeUserPassword = (user) => {
+  selectedUserForPassword.value = user
+  passwordChangeForm.newPassword = ''
+  passwordChangeForm.confirmPassword = ''
+  showPasswordModal.value = true
+}
+
+const closePasswordModal = () => {
+  showPasswordModal.value = false
+  selectedUserForPassword.value = null
+  passwordChangeForm.newPassword = ''
+  passwordChangeForm.confirmPassword = ''
+}
+
+const adminChangePassword = async () => {
+  if (passwordChangeForm.newPassword !== passwordChangeForm.confirmPassword) {
+    alert('Passwords do not match')
+    return
+  }
+
+  if (passwordChangeForm.newPassword.length < 8) {
+    alert('Password must be at least 8 characters long')
+    return
+  }
+
+  saving.value = true
+  try {
+    const response = await adminUserApi.adminChangePassword(
+      selectedUserForPassword.value.id, 
+      passwordChangeForm.newPassword
+    )
+
+    if (response.data.success) {
+      alert('Password changed successfully!')
+      closePasswordModal()
+    } else {
+      alert('Error: ' + response.data.message)
+    }
+  } catch (error) {
+    console.error('Error changing password:', error)
+    const errorMessage = error.response?.data?.message || 'Failed to change password'
+    alert('Error: ' + errorMessage)
+  } finally {
+    saving.value = false
+  }
+}
+
 const toggleUserStatus = async (user) => {
   if (user.is_admin && user.id === currentUser.value?.id) {
     alert('Cannot disable your own account')
@@ -562,6 +679,7 @@ const closeModals = () => {
   showCreateUserModal.value = false
   showEditUserModal.value = false
   showUserTypeModal.value = false
+  showPasswordModal.value = false
   resetUserForm()
 }
 

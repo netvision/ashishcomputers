@@ -18,7 +18,7 @@
                   <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
               </div>
-              <h3 class="mt-4 text-lg font-medium text-gray-900">{{ user?.name || 'User' }}</h3>
+              <h3 class="mt-4 text-lg font-medium text-gray-900">{{ user?.first_name || user?.firstName || user?.name || 'User' }}</h3>
               <p class="text-gray-600">{{ user?.email || 'user@example.com' }}</p>
             </div>
 
@@ -268,6 +268,7 @@
 <script>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { userApi } from '@/services/api'
 
 export default {
   name: 'Profile',
@@ -318,16 +319,25 @@ export default {
     const updateProfile = async () => {
       isUpdating.value = true
       try {
-        // TODO: Implement API call to update profile
-        console.log('Updating profile:', profileForm)
+        const response = await userApi.updateProfile({
+          first_name: profileForm.firstName,
+          last_name: profileForm.lastName,
+          email: profileForm.email,
+          phone: profileForm.phone,
+          date_of_birth: profileForm.dateOfBirth
+        })
         
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        alert('Profile updated successfully!')
+        if (response.data.success) {
+          // Update the user data in the auth store
+          await authStore.fetchUserProfile()
+          alert('Profile updated successfully!')
+        } else {
+          alert('Error: ' + response.data.message)
+        }
       } catch (error) {
         console.error('Error updating profile:', error)
-        alert('Failed to update profile. Please try again.')
+        const errorMessage = error.response?.data?.message || 'Failed to update profile. Please try again.'
+        alert('Error: ' + errorMessage)
       } finally {
         isUpdating.value = false
       }
@@ -359,23 +369,28 @@ export default {
 
       isChangingPassword.value = true
       try {
-        // TODO: Implement API call to change password
-        console.log('Changing password')
-        
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Clear form
-        Object.assign(passwordForm, {
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
+        const response = await userApi.changePassword({
+          current_password: passwordForm.currentPassword,
+          new_password: passwordForm.newPassword,
+          confirm_password: passwordForm.confirmPassword
         })
-        
-        alert('Password changed successfully!')
+
+        if (response.data.success) {
+          // Clear form
+          Object.assign(passwordForm, {
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: ''
+          })
+          
+          alert('Password changed successfully!')
+        } else {
+          alert('Error: ' + response.data.message)
+        }
       } catch (error) {
         console.error('Error changing password:', error)
-        alert('Failed to change password. Please try again.')
+        const errorMessage = error.response?.data?.message || 'Failed to change password. Please try again.'
+        alert('Error: ' + errorMessage)
       } finally {
         isChangingPassword.value = false
       }
@@ -395,14 +410,38 @@ export default {
       }
     }
 
-    const loadProfileData = () => {
-      // Load user data into forms
-      if (user.value) {
-        profileForm.firstName = user.value.firstName || ''
-        profileForm.lastName = user.value.lastName || ''
-        profileForm.email = user.value.email || ''
-        profileForm.phone = user.value.phone || ''
-        profileForm.dateOfBirth = user.value.dateOfBirth || ''
+    const loadProfileData = async () => {
+      try {
+        // Load user data from API
+        const response = await userApi.getProfile()
+        if (response.data.success) {
+          const userData = response.data.data
+          
+          // Update profile form with data from API (backend uses snake_case)
+          profileForm.firstName = userData.first_name || ''
+          profileForm.lastName = userData.last_name || ''
+          profileForm.email = userData.email || ''
+          profileForm.phone = userData.phone || ''
+          profileForm.dateOfBirth = userData.date_of_birth || ''
+          
+          // Load address data if available
+          if (userData.address) {
+            addressForm.address = userData.address.street || ''
+            addressForm.city = userData.address.city || ''
+            addressForm.state = userData.address.state || ''
+            addressForm.zipCode = userData.address.zipCode || ''
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile data:', error)
+        // Fallback to auth store data if API fails
+        if (user.value) {
+          profileForm.firstName = user.value.first_name || user.value.firstName || ''
+          profileForm.lastName = user.value.last_name || user.value.lastName || ''
+          profileForm.email = user.value.email || ''
+          profileForm.phone = user.value.phone || ''
+          profileForm.dateOfBirth = user.value.date_of_birth || user.value.dateOfBirth || ''
+        }
       }
     }
 

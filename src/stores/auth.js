@@ -59,6 +59,26 @@ export const useAuthStore = defineStore('auth', () => {
     delete api.defaults.headers.common['Authorization']
   }
 
+  const fetchUserProfile = async () => {
+    try {
+      if (!token.value) return { success: false, message: 'No token available' }
+      
+      const response = await userApi.getProfile()
+      if (response.data.success) {
+        user.value = response.data.data
+        localStorage.setItem('user', JSON.stringify(user.value))
+        return { success: true }
+      } else {
+        return { success: false, message: response.data.message }
+      }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to fetch profile' 
+      }
+    }
+  }
+
   const initializeAuth = () => {
     if (token.value) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
@@ -84,6 +104,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     logout,
+    fetchUserProfile,
     initializeAuth
   }
 }) 
