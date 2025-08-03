@@ -8,9 +8,7 @@
       </div>
 
       <!-- Orders List -->
-      <div v-if="!authStore.isAut    const viewOrder = (order) => {
-      selectedOrder.value = order
-    }icated" class="text-center py-12">
+      <div v-if="!authStore.isAuthenticated" class="text-center py-12">
         <div class="text-gray-400 mb-4">
           <svg class="mx-auto h-24 w-24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
