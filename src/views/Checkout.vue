@@ -170,10 +170,6 @@
                 <span>Subtotal:</span>
                 <span>₹{{ subtotal.toFixed(2) }}</span>
               </div>
-              <div class="flex justify-between">
-                <span>Shipping:</span>
-                <span>₹{{ shipping.toFixed(2) }}</span>
-              </div>
               <div class="flex justify-between font-bold text-lg">
                 <span>Total:</span>
                 <span>₹{{ total.toFixed(2) }}</span>
@@ -230,8 +226,7 @@ export default {
     // Computed properties
     const cartItems = computed(() => cartStore.items)
     const subtotal = computed(() => cartStore.total)
-    const shipping = computed(() => subtotal.value > 1000 ? 0 : 50) // Free shipping above ₹1000
-    const total = computed(() => subtotal.value + shipping.value)
+    const total = computed(() => subtotal.value)
     
     const isFormValid = computed(() => {
       return orderForm.firstName && 
@@ -271,7 +266,6 @@ export default {
           shipping_zip: orderForm.zipCode,
           payment_method: orderForm.paymentMethod,
           subtotal: subtotal.value,
-          shipping_amount: shipping.value,
           total_amount: total.value,
           items: cartItems.value.map(item => ({
             product_id: item.id,
@@ -320,7 +314,6 @@ export default {
       orderForm,
       cartItems,
       subtotal,
-      shipping,
       total,
       isFormValid,
       isSubmitting,

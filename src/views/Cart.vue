@@ -41,7 +41,7 @@
                   
                   <div class="flex-1">
                     <h3 class="text-lg font-medium text-gray-900">{{ item.name }}</h3>
-                    <p class="text-gray-600">${{ item.price.toFixed(2) }}</p>
+                    <p class="text-gray-600">₹{{ formatPrice(item.price) }}</p>
                   </div>
                   
                   <div class="flex items-center space-x-2">
@@ -62,7 +62,7 @@
                   
                   <div class="text-right">
                     <p class="text-lg font-semibold text-gray-900">
-                      ${{ (item.price * item.quantity).toFixed(2) }}
+                      ₹{{ formatPrice(item.price * item.quantity) }}
                     </p>
                     <button 
                       @click="removeItem(item.id)"
@@ -86,26 +86,14 @@
               <div class="space-y-3">
                 <div class="flex justify-between">
                   <span class="text-gray-600">Subtotal</span>
-                  <span class="font-medium">${{ cartStore.total.toFixed(2) }}</span>
-                </div>
-                
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Shipping</span>
-                  <span class="font-medium">
-                    {{ cartStore.total >= 50 ? 'Free' : '$5.00' }}
-                  </span>
-                </div>
-                
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Tax</span>
-                  <span class="font-medium">${{ (cartStore.total * 0.08).toFixed(2) }}</span>
+                  <span class="font-medium">₹{{ formatPrice(cartStore.total) }}</span>
                 </div>
                 
                 <div class="border-t pt-3">
                   <div class="flex justify-between">
                     <span class="text-lg font-semibold text-gray-900">Total</span>
                     <span class="text-lg font-semibold text-gray-900">
-                      ${{ totalWithTaxAndShipping.toFixed(2) }}
+                      ₹{{ formatPrice(cartStore.total) }}
                     </span>
                   </div>
                 </div>
@@ -147,12 +135,9 @@ import { useCartStore } from '@/stores/cart'
 
 const cartStore = useCartStore()
 
-const totalWithTaxAndShipping = computed(() => {
-  const subtotal = cartStore.total
-  const tax = subtotal * 0.08
-  const shipping = subtotal >= 50 ? 0 : 5
-  return subtotal + tax + shipping
-})
+const formatPrice = (price) => {
+  return new Intl.NumberFormat('en-IN').format(parseFloat(price))
+}
 
 const updateQuantity = (productId, quantity) => {
   cartStore.updateQuantity(productId, quantity)
