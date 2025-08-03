@@ -10,8 +10,8 @@ const getApiBaseUrl = () => {
   }
   
   if (import.meta.env.DEV) {
-    // Development environment - use production API directly since it auto-syncs
-    return 'https://computers.netserve.in/api/v1'
+    // Development environment - use proxy to avoid CORS issues
+    return '/api/v1'
   } else {
     // Production environment fallback
     return 'https://computers.netserve.in/api/v1'
@@ -29,9 +29,11 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    
     return config
   },
   (error) => {
@@ -45,15 +47,6 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
-    console.error('API Error:', {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      message: error.message
-    })
-    
     if (error.response?.status === 401) {
       // Token expired or invalid
       localStorage.removeItem('token')
@@ -61,11 +54,9 @@ api.interceptors.response.use(
       window.location.href = '/login'
     } else if (error.response?.status === 403) {
       // Forbidden - might be CORS or permissions
-      console.error('403 Forbidden Error. Check CORS configuration and API permissions.')
       error.userMessage = 'Access denied. Please check if you have permission to access this resource.'
     } else if (error.code === 'ERR_NETWORK' || error.message.includes('CORS')) {
       // Network or CORS error
-      console.error('API Connection Error:', error.message)
       error.userMessage = 'Unable to connect to the API server. Please check if the server is running and CORS is configured properly.'
     }
     
@@ -241,6 +232,44 @@ export const adminUserApi = {
     return api.put(`/user/update/${userId}`, { 
       user_type_id: userTypeId 
     })
+  }
+}
+
+// Order API methods
+export const orderApi = {
+  // Get all orders (admin) or user's orders
+  getOrders(params = {}) {
+    return api.get('/orders', { params })
+  },
+  
+  // Get specific order by ID
+  getOrder(id) {
+    return api.get(`/orders/${id}`)
+  },
+  
+  // Create new order
+  createOrder(orderData) {
+    return api.post('/orders', orderData)
+  },
+  
+  // Update order (admin only)
+  updateOrder(id, orderData) {
+    return api.put(`/orders/${id}`, orderData)
+  },
+  
+  // Update order status (admin only)
+  updateOrderStatus(id, status) {
+    return api.patch(`/orders/${id}/status`, { status })
+  },
+  
+  // Cancel order
+  cancelOrder(id) {
+    return api.patch(`/orders/${id}/cancel`)
+  },
+  
+  // Get order statistics (admin only)
+  getOrderStats(params = {}) {
+    return api.get('/orders/stats', { params })
   }
 }
 

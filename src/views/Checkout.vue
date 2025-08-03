@@ -201,6 +201,8 @@ import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
+import { orderApi } from '@/services/api'
+import { useNotification } from '@/composables/useNotification'
 
 export default {
   name: 'Checkout',
@@ -208,6 +210,7 @@ export default {
     const router = useRouter()
     const cartStore = useCartStore()
     const authStore = useAuthStore()
+    const { success, error } = useNotification()
     
     const isSubmitting = ref(false)
     
@@ -246,7 +249,7 @@ export default {
     // Methods
     const submitOrder = async () => {
       if (!isFormValid.value) {
-        alert('Please fill in all required fields')
+        error('Please fill in all required fields')
         return
       }
 
@@ -255,33 +258,59 @@ export default {
       try {
         // Prepare order data
         const orderData = {
-          ...orderForm,
+          customer_name: `${orderForm.firstName} ${orderForm.lastName}`,
+          customer_email: orderForm.email,
+          customer_phone: orderForm.phone,
+          billing_address: orderForm.address,
+          billing_city: orderForm.city,
+          billing_state: orderForm.state,
+          billing_zip: orderForm.zipCode,
+          shipping_address: orderForm.address, // Same as billing for now
+          shipping_city: orderForm.city,
+          shipping_state: orderForm.state,
+          shipping_zip: orderForm.zipCode,
+          payment_method: orderForm.paymentMethod,
+          subtotal: subtotal.value,
+          shipping_amount: shipping.value,
+          total_amount: total.value,
           items: cartItems.value.map(item => ({
             product_id: item.id,
+            product_name: item.name,
             quantity: item.quantity,
             price: item.price
-          })),
-          subtotal: subtotal.value,
-          shipping: shipping.value,
-          total: total.value
+          }))
         }
 
-        // TODO: Submit order to API
-        console.log('Order data:', orderData)
+        const response = await orderApi.createOrder(orderData)
         
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        if (response.data.success) {
+          // Clear cart after successful order
+          cartStore.clearCart()
+          
+          const orderNumber = response.data.data.order_number || response.data.data.id
+          
+          // Show success message
+          if (authStore.isAuthenticated) {
+            success(`Order #${orderNumber} placed successfully!`)
+          } else {
+            success(`Order #${orderNumber} placed successfully! Please create an account to track your order.`)
+          }
+          
+          console.log('Order created successfully, redirecting to orders page')
+          
+          // Redirect to orders page if authenticated, otherwise to home/login
+          if (authStore.isAuthenticated) {
+            router.push('/orders')
+          } else {
+            // For guest users, redirect to home with a message to login to track orders
+            router.push('/')
+          }
+        } else {
+          throw new Error(response.data.message || 'Failed to place order')
+        }
         
-        // Clear cart after successful order
-        cartStore.clearCart()
-        
-        // Redirect to success page
-        alert('Order placed successfully!')
-        router.push('/')
-        
-      } catch (error) {
-        console.error('Error placing order:', error)
-        alert('Failed to place order. Please try again.')
+      } catch (err) {
+        error('Failed to place order: ' + (err.response?.data?.message || err.message))
       } finally {
         isSubmitting.value = false
       }

@@ -121,17 +121,17 @@
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="order in filteredOrders" :key="order.id">
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-gray-900">#{{ order.id }}</div>
+                  <div class="text-sm font-medium text-gray-900">#{{ order.order_number || order.id }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="text-sm text-gray-900">{{ order.customer_name }}</div>
                   <div class="text-sm text-gray-500">{{ order.customer_email }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900">{{ order.items_count }} items</div>
+                  <div class="text-sm text-gray-900">{{ order.items_count || order.items?.length || 0 }} items</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-gray-900">₹{{ formatPrice(order.total) }}</div>
+                  <div class="text-sm font-medium text-gray-900">₹{{ formatPrice(order.total_amount || order.total || 0) }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span :class="getStatusClass(order.status)" class="px-2 py-1 text-xs font-medium rounded-full">
@@ -139,7 +139,7 @@
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900">{{ formatDate(order.created_at) }}</div>
+                  <div class="text-sm text-gray-900">{{ formatDate(order.ordered_at || order.created_at) }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button @click="viewOrder(order)" class="text-blue-600 hover:text-blue-900 mr-3">
@@ -151,6 +151,7 @@
                     class="text-sm border-gray-300 rounded"
                   >
                     <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
                     <option value="processing">Processing</option>
                     <option value="shipped">Shipped</option>
                     <option value="delivered">Delivered</option>
@@ -172,6 +173,138 @@
           </p>
         </div>
       </div>
+
+      <!-- Order Details Modal -->
+      <div v-if="selectedOrder" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" @click="closeOrderDetails">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white" @click.stop>
+          <!-- Modal Header -->
+          <div class="flex items-center justify-between pb-4 border-b">
+            <h3 class="text-2xl font-bold text-gray-900">
+              Order Details #{{ selectedOrder.order_number || selectedOrder.id }}
+            </h3>
+            <button 
+              @click="closeOrderDetails"
+              class="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Modal Content -->
+          <div class="mt-4 max-h-96 overflow-y-auto">
+            <!-- Customer Information -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="text-lg font-semibold text-gray-900 mb-3">Customer Information</h4>
+                <div class="space-y-2">
+                  <p><span class="font-medium">Name:</span> {{ selectedOrder.customer_name || 'N/A' }}</p>
+                  <p><span class="font-medium">Email:</span> {{ selectedOrder.customer_email || 'N/A' }}</p>
+                  <p><span class="font-medium">Phone:</span> {{ selectedOrder.customer_phone || 'N/A' }}</p>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="text-lg font-semibold text-gray-900 mb-3">Order Information</h4>
+                <div class="space-y-2">
+                  <p><span class="font-medium">Status:</span> 
+                    <span :class="getStatusClass(selectedOrder.status)" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ml-2">
+                      {{ selectedOrder.status }}
+                    </span>
+                  </p>
+                  <p><span class="font-medium">Payment Status:</span> {{ selectedOrder.payment_status || 'N/A' }}</p>
+                  <p><span class="font-medium">Payment Method:</span> {{ selectedOrder.payment_method || 'N/A' }}</p>
+                  <p><span class="font-medium">Order Date:</span> {{ formatDate(selectedOrder.ordered_at || selectedOrder.created_at) }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Shipping Address -->
+            <div class="mb-6">
+              <h4 class="text-lg font-semibold text-gray-900 mb-3">Shipping Address</h4>
+              <div class="bg-gray-50 p-4 rounded-lg">
+                <p>{{ selectedOrder.shipping_address || 'No shipping address provided' }}</p>
+              </div>
+            </div>
+
+            <!-- Order Items -->
+            <div class="mb-6">
+              <h4 class="text-lg font-semibold text-gray-900 mb-3">Order Items</h4>
+              <div class="space-y-4">
+                <div 
+                  v-for="item in selectedOrder.items || selectedOrder.orderItems || []" 
+                  :key="item.id"
+                  class="flex items-center space-x-4 bg-gray-50 p-4 rounded-lg"
+                >
+                  <img
+                    :src="item.product_image || item.product?.image || `https://picsum.photos/200/200?random=${item.product_id || item.product?.id}`"
+                    :alt="item.product_name || item.product?.name"
+                    class="w-16 h-16 object-cover rounded-lg"
+                  />
+                  <div class="flex-1">
+                    <h5 class="font-medium text-gray-900">{{ item.product_name || item.product?.name }}</h5>
+                    <p class="text-sm text-gray-600">Quantity: {{ item.quantity }}</p>
+                    <p class="text-sm text-gray-600">Unit Price: ₹{{ formatPrice(item.unit_price || item.price || 0) }}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="font-medium text-gray-900">₹{{ formatPrice((item.unit_price || item.price || 0) * item.quantity) }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="border-t pt-4">
+              <h4 class="text-lg font-semibold text-gray-900 mb-3">Order Summary</h4>
+              <div class="bg-gray-50 p-4 rounded-lg space-y-2">
+                <div class="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>₹{{ formatPrice((selectedOrder.total_amount || 0) - (selectedOrder.tax_amount || 0) - (selectedOrder.shipping_cost || 0)) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Tax:</span>
+                  <span>₹{{ formatPrice(selectedOrder.tax_amount || 0) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Shipping:</span>
+                  <span>₹{{ formatPrice(selectedOrder.shipping_cost || 0) }}</span>
+                </div>
+                <div v-if="selectedOrder.discount_amount > 0" class="flex justify-between text-green-600">
+                  <span>Discount:</span>
+                  <span>-₹{{ formatPrice(selectedOrder.discount_amount || 0) }}</span>
+                </div>
+                <div class="flex justify-between font-bold text-lg border-t pt-2">
+                  <span>Total:</span>
+                  <span>₹{{ formatPrice(selectedOrder.total_amount || 0) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal Footer -->
+          <div class="flex justify-end space-x-3 pt-4 border-t mt-6">
+            <button
+              @click="closeOrderDetails"
+              class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+            >
+              Close
+            </button>
+            <select 
+              :value="selectedOrder.status" 
+              @change="updateOrderStatus(selectedOrder, $event.target.value); closeOrderDetails()"
+              class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors border-none"
+            >
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="processing">Processing</option>
+              <option value="shipped">Shipped</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+      </div>
     </div>
   </AdminLayout>
 </template>
@@ -179,7 +312,9 @@
 <script>
 import { ref, onMounted, computed } from 'vue'
 import AdminLayout from '@/components/AdminLayout.vue'
-import api from '@/services/api'
+import { orderApi } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
+import { useNotification } from '@/composables/useNotification'
 
 export default {
   name: 'AdminOrders',
@@ -187,6 +322,8 @@ export default {
     AdminLayout
   },
   setup() {
+    const authStore = useAuthStore()
+    const { success, error } = useNotification()
     const orders = ref([])
     const loading = ref(true)
     
@@ -194,36 +331,46 @@ export default {
     const selectedStatus = ref('')
     const dateRange = ref('')
 
-    // Mock data for now - replace with actual API calls
-    const mockOrders = [
-      {
-        id: 1001,
-        customer_name: 'John Doe',
-        customer_email: 'john@example.com',
-        items_count: 3,
-        total: 2599.97,
-        status: 'pending',
-        created_at: '2025-01-30T10:30:00Z'
-      },
-      {
-        id: 1002,
-        customer_name: 'Jane Smith',
-        customer_email: 'jane@example.com',
-        items_count: 1,
-        total: 1299.99,
-        status: 'shipped',
-        created_at: '2025-01-29T14:20:00Z'
-      },
-      {
-        id: 1003,
-        customer_name: 'Bob Johnson',
-        customer_email: 'bob@example.com',
-        items_count: 2,
-        total: 179.98,
-        status: 'delivered',
-        created_at: '2025-01-28T09:15:00Z'
+    const fetchOrders = async () => {
+      try {
+        loading.value = true
+        const params = {}
+        
+        if (selectedStatus.value) {
+          params.status = selectedStatus.value
+        }
+        
+        if (dateRange.value) {
+          const now = new Date()
+          switch (dateRange.value) {
+            case 'today':
+              params.date_from = now.toISOString().split('T')[0]
+              break
+            case 'week':
+              const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+              params.date_from = weekAgo.toISOString().split('T')[0]
+              break
+            case 'month':
+              const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+              params.date_from = monthAgo.toISOString().split('T')[0]
+              break
+          }
+        }
+
+        const response = await orderApi.getOrders(params)
+        
+        if (response.data.success) {
+          orders.value = response.data.data.orders || []
+        } else {
+          throw new Error(response.data.message || 'Failed to fetch orders')
+        }
+      } catch (err) {
+        error('Failed to load orders: ' + (err.response?.data?.message || err.message))
+        orders.value = []
+      } finally {
+        loading.value = false
       }
-    ]
+    }
 
     const filteredOrders = computed(() => {
       let filtered = orders.value
@@ -232,6 +379,7 @@ export default {
       if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
         filtered = filtered.filter(order =>
+          order.order_number?.toLowerCase().includes(query) ||
           order.id.toString().includes(query) ||
           order.customer_name.toLowerCase().includes(query) ||
           order.customer_email.toLowerCase().includes(query)
@@ -243,25 +391,7 @@ export default {
         filtered = filtered.filter(order => order.status === selectedStatus.value)
       }
 
-      // Date range filter
-      if (dateRange.value) {
-        const now = new Date()
-        filtered = filtered.filter(order => {
-          const orderDate = new Date(order.created_at)
-          switch (dateRange.value) {
-            case 'today':
-              return orderDate.toDateString() === now.toDateString()
-            case 'week':
-              const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-              return orderDate >= weekAgo
-            case 'month':
-              const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-              return orderDate >= monthAgo
-            default:
-              return true
-          }
-        })
-      }
+      // Date range filter is handled in fetchOrders()
 
       return filtered
     })
@@ -272,7 +402,7 @@ export default {
     const totalRevenue = computed(() => {
       return orders.value
         .filter(o => o.status === 'delivered')
-        .reduce((sum, order) => sum + order.total, 0)
+        .reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0)
         .toFixed(2)
     })
 
@@ -293,6 +423,7 @@ export default {
     const getStatusClass = (status) => {
       const statusClasses = {
         pending: 'bg-yellow-100 text-yellow-800',
+        confirmed: 'bg-blue-100 text-blue-800',
         processing: 'bg-blue-100 text-blue-800',
         shipped: 'bg-purple-100 text-purple-800',
         delivered: 'bg-green-100 text-green-800',
@@ -301,43 +432,37 @@ export default {
       return statusClasses[status] || 'bg-gray-100 text-gray-800'
     }
 
-    const fetchOrders = async () => {
-      try {
-        // TODO: Replace with actual API call when orders endpoint is ready
-        // const response = await api.get('/orders')
-        // orders.value = response.data.data || response.data || []
-        
-        // For now, use mock data
-        orders.value = mockOrders
-      } catch (error) {
-        console.error('Error fetching orders:', error)
-        orders.value = mockOrders // Fallback to mock data
-      }
-    }
+    const selectedOrder = ref(null)
 
     const viewOrder = (order) => {
-      // TODO: Implement order detail view
-      alert(`View order #${order.id} details`)
+      selectedOrder.value = order
+    }
+
+    const closeOrderDetails = () => {
+      selectedOrder.value = null
     }
 
     const updateOrderStatus = async (order, newStatus) => {
       try {
-        // TODO: Replace with actual API call
-        // await api.put(`/orders/${order.id}`, { status: newStatus })
+        const response = await orderApi.updateOrderStatus(order.id, newStatus)
         
-        // For now, update locally
-        order.status = newStatus
-        console.log(`Updated order #${order.id} status to ${newStatus}`)
-      } catch (error) {
-        console.error('Error updating order status:', error)
-        alert('Error updating order status. Please try again.')
+        if (response.data.success) {
+          // Update local order status
+          const orderIndex = orders.value.findIndex(o => o.id === order.id)
+          if (orderIndex !== -1) {
+            orders.value[orderIndex].status = newStatus
+          }
+          success(`Order #${order.order_number || order.id} status updated to ${newStatus}`)
+        } else {
+          throw new Error(response.data.message || 'Failed to update order status')
+        }
+      } catch (err) {
+        error('Failed to update order status: ' + (err.response?.data?.message || err.message))
       }
     }
 
     onMounted(async () => {
-      loading.value = true
       await fetchOrders()
-      loading.value = false
     })
 
     return {
@@ -351,11 +476,14 @@ export default {
       pendingOrders,
       completedOrders,
       totalRevenue,
+      selectedOrder,
       formatPrice,
       formatDate,
       getStatusClass,
       viewOrder,
-      updateOrderStatus
+      closeOrderDetails,
+      updateOrderStatus,
+      fetchOrders
     }
   }
 }
